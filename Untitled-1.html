@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมลิมิตสุดฮา - Funny Limit Quiz!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Kanit', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .game-title {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: rainbow 3s ease-in-out infinite;
+        }
+        
+        @keyframes rainbow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        .bounce {
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        
+        .wiggle {
+            animation: wiggle 1s ease-in-out infinite;
+        }
+        
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(5deg); }
+            75% { transform: rotate(-5deg); }
+        }
+        
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 20px rgba(255, 107, 107, 0.5); }
+            to { box-shadow: 0 0 30px rgba(255, 107, 107, 0.8), 0 0 40px rgba(255, 107, 107, 0.3); }
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ff6b6b;
+            animation: confetti-fall 3s linear infinite;
+        }
+        
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        
+        .timer-warning {
+            animation: timer-pulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes timer-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .level-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
+            backdrop-filter: blur(15px);
+            border: 3px solid rgba(255,255,255,0.3);
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
+            background-size: 200% 100%;
+            animation: progress-shine 2s linear infinite;
+        }
+        
+        @keyframes progress-shine {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        .hint-popup {
+            transform: scale(0);
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .hint-popup.show {
+            transform: scale(1);
+        }
+        
+        .reaction-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            z-index: 1000;
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .reaction-popup.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .star-animation {
+            animation: star-collect 1s ease-in-out;
+        }
+        
+        @keyframes star-collect {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.5) rotate(180deg); }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+    <!-- Confetti Container -->
+    <div id="confetti-container" class="fixed inset-0 pointer-events-none z-50"></div>
+    
+    <!-- Reaction Popup -->
+    <div id="reaction-popup" class="reaction-popup">
+        <div class="level-card rounded-3xl p-8 text-center max-w-md">
+            <div id="reaction-emoji" class="text-8xl mb-4">🎉</div>
+            <div id="reaction-text" class="text-2xl font-bold text-purple-600 mb-2">ถูกต้อง!</div>
+            <div id="reaction-message" class="text-lg text-gray-700">กราฟยิ้มให้คุณ!</div>
+        </div>
+    </div>
+    
+    <!-- Main Game Container -->
+    <div class="min-h-screen p-4">
+        <!-- Header with Game Stats -->
+        <div class="max-w-4xl mx-auto mb-6">
+            <div class="level-card rounded-2xl p-4 border-2 border-white/30">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="text-4xl bounce">🧮</div>
+                        <div>
+                            <h2 class="text-purple-700 font-bold text-lg">คำถามที่ <span id="current-question">1</span>/20</h2>
+                            <div class="w-32 h-2 bg-purple-200 rounded-full overflow-hidden">
+                                <div id="progress-bar" class="h-full progress-bar rounded-full" style="width: 5%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <span id="star-icon" class="text-2xl">⭐</span>
+                            <span id="score" class="text-purple-700 font-bold text-xl">0</span>
+                            <span class="text-purple-600">คะแนน</span>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                            <span class="text-2xl">⏰</span>
+                            <span id="timer" class="text-red-600 font-bold text-xl">2:00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen Container -->
+        <div id="game-screen" class="max-w-4xl mx-auto">
+            
+            <!-- Welcome Screen -->
+            <div id="welcome-screen" class="level-card rounded-3xl p-8 text-center">
+                <h1 class="game-title text-5xl md:text-7xl mb-6">เกมลิมิตสุดฮา</h1>
+                <h2 class="text-3xl md:text-4xl font-bold text-purple-600 mb-4">Funny Limit Quiz! 😂</h2>
+                
+                <div class="flex justify-center items-center space-x-4 mb-8">
+                    <div class="text-6xl bounce">📊</div>
+                    <div class="text-6xl wiggle">🤪</div>
+                    <div class="text-6xl bounce" style="animation-delay: 0.5s">∞</div>
+                </div>
+                
+                <div class="bg-yellow-100 border-4 border-yellow-300 rounded-2xl p-6 mb-8">
+                    <h3 class="text-2xl font-bold text-yellow-800 mb-3">ยินดีต้อนรับสู่โลกลิมิตสุดฮา! 🎭</h3>
+                    <p class="text-lg text-yellow-700">เตรียมพร้อมสำหรับการผจญภัยทางคณิตศาสตร์ที่เต็มไปด้วยเสียงหัวเราะ! คำตอบจะสลับตำแหน่งกันทุกครั้ง</p>
+                </div>
+                
+                <div class="grid md:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-green-100 border-3 border-green-300 rounded-xl p-4">
+                        <div class="text-3xl mb-2">🟢</div>
+                        <h4 class="font-bold text-green-800">ระดับง่าย</h4>
+                        <p class="text-green-700 text-sm">7 คำถาม</p>
+                    </div>
+                    <div class="bg-yellow-100 border-3 border-yellow-300 rounded-xl p-4">
+                        <div class="text-3xl mb-2">🟡</div>
+                        <h4 class="font-bold text-yellow-800">ระดับปานกลาง</h4>
+                        <p class="text-yellow-700 text-sm">7 คำถาม</p>
+                    </div>
+                    <div class="bg-red-100 border-3 border-red-300 rounded-xl p-4">
+                        <div class="text-3xl mb-2">🔴</div>
+                        <h4 class="font-bold text-red-800">ระดับยาก</h4>
+                        <p class="text-red-700 text-sm">6 คำถาม</p>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-100 border-3 border-blue-300 rounded-xl p-4 mb-6">
+                    <h4 class="font-bold text-blue-800 mb-2">กติกาการเล่น 📋</h4>
+                    <ul class="text-blue-700 text-left space-y-1">
+                        <li>• เวลาในการเล่น: 15 นาที ⏰</li>
+                        <li>• ตอบถูก = +10 คะแนน ⭐</li>
+                        <li>• ใช้ปุ่มใบ้ได้ (แต่จะหักคะแนน 2 คะแนน) 💡</li>
+                        <li>• คำตอบจะสลับตำแหน่งกันทุกครั้ง! 🔄</li>
+                        <li>• มีปฏิกิริยาตลก ๆ หลังตอบทุกข้อ 😂</li>
+                    </ul>
+                </div>
+                
+                <button onclick="startGame()" class="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold text-2xl px-12 py-4 rounded-full transform hover:scale-105 transition-all duration-300 pulse-glow">
+                    เริ่มเกมสุดฮา! 🎮
+                </button>
+            </div>
+
+            <!-- Question Screen -->
+            <div id="question-screen" class="level-card rounded-3xl p-8 hidden">
+                <div class="text-center mb-6">
+                    <div class="flex justify-center items-center space-x-4 mb-4">
+                        <div id="difficulty-badge" class="px-4 py-2 rounded-full font-bold text-white bg-green-500">
+                            🟢 ระดับง่าย
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-6 mb-6 border-4 border-purple-300 relative">
+                    <div id="question-content" class="text-center">
+                        <!-- Question will be inserted here -->
+                    </div>
+                    
+                    <!-- Hint Popup -->
+                    <div id="hint-popup" class="hint-popup absolute top-4 right-4 bg-yellow-100 border-3 border-yellow-400 rounded-xl p-4 max-w-xs">
+                        <div class="flex items-start space-x-2">
+                            <span class="text-2xl">💡</span>
+                            <div>
+                                <h4 class="font-bold text-yellow-800 mb-1">คำใบ้:</h4>
+                                <p id="hint-text" class="text-yellow-700 text-sm"></p>
+                            </div>
+                        </div>
+                        <button onclick="hideHint()" class="absolute top-1 right-2 text-yellow-600 hover:text-yellow-800 font-bold">×</button>
+                    </div>
+                </div>
+                
+                <div class="text-center mb-4">
+                    <button onclick="showHint()" class="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold px-6 py-3 rounded-full transition-all duration-300 transform hover:scale-105">
+                        💡 ขอใบ้หน่อย (-2 คะแนน)
+                    </button>
+                </div>
+                
+                <div id="answers-container" class="grid md:grid-cols-2 gap-4 mb-6">
+                    <!-- Answers will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Game Over Screen -->
+            <div id="gameover-screen" class="level-card rounded-3xl p-8 text-center hidden">
+                <div id="result-icon" class="text-8xl mb-6">🎉</div>
+                <h1 id="result-title" class="game-title text-5xl md:text-7xl mb-4">ยินดีด้วย!</h1>
+                <h2 id="result-subtitle" class="text-3xl font-bold text-purple-600 mb-6">คุณพิชิตลิมิตแล้ว! 🏆</h2>
+                
+                <div class="grid md:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-yellow-100 border-3 border-yellow-300 rounded-xl p-4">
+                        <div class="text-3xl mb-2">⭐</div>
+                        <h4 class="font-bold text-yellow-800">คะแนนรวม</h4>
+                        <p class="text-2xl font-bold text-yellow-600" id="final-score">0</p>
+                    </div>
+                    <div class="bg-green-100 border-3 border-green-300 rounded-xl p-4">
+                        <div class="text-3xl mb-2">✅</div>
+                        <h4 class="font-bold text-green-800">ตอบถูก</h4>
+                        <p class="text-2xl font-bold text-green-600" id="correct-answers">0</p>
+                    </div>
+                    <div class="bg-blue-100 border-3 border-blue-300 rounded-xl p-4">
+                        <div class="text-3xl mb-2">📊</div>
+                        <h4 class="font-bold text-blue-800">เปอร์เซ็นต์</h4>
+                        <p class="text-2xl font-bold text-blue-600" id="percentage">0%</p>
+                    </div>
+                </div>
+                
+                <div id="performance-message" class="bg-gradient-to-r from-yellow-100 to-orange-100 border-4 border-yellow-400 rounded-2xl p-6 mb-8">
+                    <!-- Performance message will be inserted here -->
+                </div>
+                
+                <button onclick="restartGame()" class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold text-2xl px-12 py-4 rounded-full transform hover:scale-105 transition-all duration-300 pulse-glow">
+                    เล่นอีกครั้ง! 🔄
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let correctAnswers = 0;
+        let timeLeft = 900; // 15 minutes
+        let gameTimer;
+        let hintUsed = false;
+        let shuffledQuestions = [];
+
+        // Questions database with funny reactions - ปรับระดับความยากให้เหมาะสม
+        const questions = [
+            // ระดับง่าย (7 questions) - เพิ่มความท้าทายเล็กน้อย
+            {
+                level: "easy",
+                question: "จงหา lim<sub>x→2</sub> (x² + x - 2)",
+                correctAnswer: "4",
+                wrongAnswers: ["ไปถึงพิซซ่า 🍕", "6", "2"],
+                hint: "แทนค่า x = 2 ลงในสมการ x² + x - 2",
+                correctReaction: { emoji: "🎉", text: "ถูกต้อง!", message: "กราฟยิ้มให้คุณ!" },
+                wrongReaction: { emoji: "😂", text: "ผิดจ้า!", message: "x หนีไปเที่ยวแล้ว!" }
+            },
+            {
+                level: "easy",
+                question: "จงหา lim<sub>x→3</sub> (2x - 1)",
+                correctAnswer: "5",
+                wrongAnswers: ["ไปกินส้มตำ 🥗", "6", "3"],
+                hint: "แทนค่า x = 3 ลงในสมการ 2x - 1 = 2(3) - 1",
+                correctReaction: { emoji: "🌟", text: "เยี่ยม!", message: "ลิมิตเต้นรำให้คุณ!" },
+                wrongReaction: { emoji: "🤪", text: "อ๊ะ ผิดแล้ว!", message: "ฟังก์ชันหัวเราะคิกคัก!" }
+            },
+            {
+                level: "easy",
+                question: "จงหา lim<sub>x→1</sub> (x³ + 2x)",
+                correctAnswer: "3",
+                wrongAnswers: ["ไปเที่ยวเขาใหญ่ 🏔️", "1", "4"],
+                hint: "แทนค่า x = 1 ลงในสมการ 1³ + 2(1)",
+                correctReaction: { emoji: "🎯", text: "แม่นมาก!", message: "กราฟโบกมือให้!" },
+                wrongReaction: { emoji: "🙃", text: "เอ๊ะ!", message: "ตัวเลขวิ่งหนีไปแล้ว!" }
+            },
+            {
+                level: "easy",
+                question: "จงหา lim<sub>x→0</sub> (3x² + 4)",
+                correctAnswer: "4",
+                wrongAnswers: ["ไปดูหนัง 🎬", "0", "3"],
+                hint: "แทนค่า x = 0 ลงในสมการ 3(0)² + 4",
+                correctReaction: { emoji: "🚀", text: "สุดยอด!", message: "ลิมิตบินไปฟ้า!" },
+                wrongReaction: { emoji: "🤭", text: "อุ๊ปส์!", message: "คำตอบซ่อนตัวอยู่!" }
+            },
+            {
+                level: "easy",
+                question: "จงหา lim<sub>x→-2</sub> (x² - 3x + 1)",
+                correctAnswer: "11",
+                wrongAnswers: ["ไปกินไอศกรีม 🍦", "5", "-5"],
+                hint: "แทนค่า x = -2 ลงในสมการ (-2)² - 3(-2) + 1",
+                correctReaction: { emoji: "🎊", text: "ว้าว!", message: "คณิตศาสตร์ปรบมือให้!" },
+                wrongReaction: { emoji: "😵", text: "โอ๊ย!", message: "ตัวเลขเวียนหัว!" }
+            },
+            {
+                level: "easy",
+                question: "จงหา lim<sub>x→4</sub> (√x + 1)",
+                correctAnswer: "3",
+                wrongAnswers: ["ไปเล่นน้ำ 🏊", "2", "5"],
+                hint: "√4 = 2 แล้วบวก 1",
+                correctReaction: { emoji: "🌈", text: "เจ๋ง!", message: "รากที่สองยิ้มแย้ม!" },
+                wrongReaction: { emoji: "🤷", text: "เฮ้ย!", message: "รากที่สองหายไปไหน?" }
+            },
+            {
+                level: "easy",
+                question: "จงหา lim<sub>x→5</sub> (x² - 4x)",
+                correctAnswer: "5",
+                wrongAnswers: ["ไปกินขนมปัง 🍞", "25", "1"],
+                hint: "แทนค่า x = 5 ลงในสมการ 5² - 4(5)",
+                correctReaction: { emoji: "🎪", text: "ยอดเยี่ยม!", message: "ลิมิตเล่นละครให้ดู!" },
+                wrongReaction: { emoji: "🤡", text: "อ๊ะฮะ!", message: "ตัวเลขแกล้งคุณ!" }
+            },
+
+            // ระดับปานกลาง (7 questions) - ลดความยากลง
+            {
+                level: "medium",
+                question: "จงหา lim<sub>x→2</sub> (x² - 4)/(x - 2)",
+                correctAnswer: "4",
+                wrongAnswers: ["ยูนิคอร์นไม่กำหนด 🦄", "0", "2"],
+                hint: "แยกตัวประกอบ x² - 4 = (x-2)(x+2) แล้วตัด (x-2)",
+                correctReaction: { emoji: "🧙", text: "เวทมนตร์!", message: "คุณแยกตัวประกอบได้!" },
+                wrongReaction: { emoji: "🦄", text: "อุ๊ย!", message: "ยูนิคอร์นวิ่งหนี!" }
+            },
+            {
+                level: "medium",
+                question: "จงหา lim<sub>x→3</sub> (x² - 9)/(x - 3)",
+                correctAnswer: "6",
+                wrongAnswers: ["ไปเที่ยวทะเล 🌊", "3", "9"],
+                hint: "แยกตัวประกอบ x² - 9 = (x-3)(x+3) แล้วตัด (x-3)",
+                correctReaction: { emoji: "🌊", text: "คลื่นสวย!", message: "ตัวประกอบโบกมือให้!" },
+                wrongReaction: { emoji: "🏄", text: "จมน้ำ!", message: "ตัวประกอบหายไป!" }
+            },
+            {
+                level: "medium",
+                question: "จงหา lim<sub>x→1</sub> (x² - 1)/(x - 1)",
+                correctAnswer: "2",
+                wrongAnswers: ["ไปกินข้าวผัด 🍛", "1", "0"],
+                hint: "แยกตัวประกอบ x² - 1 = (x-1)(x+1) แล้วตัด (x-1)",
+                correctReaction: { emoji: "🍚", text: "อร่อย!", message: "ข้าวผัดคณิตศาสตร์!" },
+                wrongReaction: { emoji: "🥢", text: "หก!", message: "ข้าวผัดหกใส่พื้น!" }
+            },
+            {
+                level: "medium",
+                question: "จงหา lim<sub>x→0</sub> (x² + 3x)/x",
+                correctAnswer: "3",
+                wrongAnswers: ["ไปเล่นเกม 🎮", "0", "∞"],
+                hint: "แยกตัวประกอบ x(x + 3)/x แล้วตัด x",
+                correctReaction: { emoji: "🎮", text: "เลเวลอัพ!", message: "คุณผ่านด่านแล้ว!" },
+                wrongReaction: { emoji: "💀", text: "เกมโอเวอร์!", message: "ลองใหม่อีกครั้ง!" }
+            },
+            {
+                level: "medium",
+                question: "จงหา lim<sub>x→∞</sub> (3x + 2)/x",
+                correctAnswer: "3",
+                wrongAnswers: ["ไปดูซีรีส์ 📺", "2", "∞"],
+                hint: "หารทั้งเศษและส่วนด้วย x จะได้ (3 + 2/x)/1",
+                correctReaction: { emoji: "📺", text: "ซีรีส์ดี!", message: "อนันต์แสดงได้เยี่ยม!" },
+                wrongReaction: { emoji: "📻", text: "สัญญาณขาด!", message: "อนันต์หายไป!" }
+            },
+            {
+                level: "medium",
+                question: "จงหา lim<sub>x→∞</sub> (2x - 1)/(x + 3)",
+                correctAnswer: "2",
+                wrongAnswers: ["ไปกินพิซซ่า 🍕", "-1", "3"],
+                hint: "หารทั้งเศษและส่วนด้วย x จะได้ (2 - 1/x)/(1 + 3/x)",
+                correctReaction: { emoji: "🍕", text: "อร่อยจัง!", message: "อนันต์หอมกรุ่น!" },
+                wrongReaction: { emoji: "🔥", text: "ไหม้!", message: "พิซซ่าไหม้แล้ว!" }
+            },
+            {
+                level: "medium",
+                question: "จงหา lim<sub>x→0</sub> (5x + x²)/x",
+                correctAnswer: "5",
+                wrongAnswers: ["ไปเต้นรำ 💃", "0", "∞"],
+                hint: "แยกตัวประกอบ x(5 + x)/x แล้วตัด x",
+                correctReaction: { emoji: "💃", text: "เต้นสวย!", message: "ตัวประกอบเต้นได้ลื่น!" },
+                wrongReaction: { emoji: "🕺", text: "เต้นผิดจังหวะ!", message: "ตัวประกอบสะดุด!" }
+            },
+
+            // ระดับยาก (6 questions) - ปรับให้เหมาะสมขึ้น
+            {
+                level: "hard",
+                question: "จงหา lim<sub>x→∞</sub> (x² + 1)/(2x² - 3)",
+                correctAnswer: "1/2",
+                wrongAnswers: ["ชานมไข่มุก 🥤", "1", "∞"],
+                hint: "หารทั้งเศษและส่วนด้วย x² แล้วดูค่าสัมประสิทธิ์หน้า x²",
+                correctReaction: { emoji: "🥤", text: "หวานชื่น!", message: "ชานมไข่มุกอนันต์!" },
+                wrongReaction: { emoji: "🧊", text: "เย็นจัด!", message: "น้ำแข็งละลายหมด!" }
+            },
+            {
+                level: "hard",
+                question: "จงหา lim<sub>x→∞</sub> (3x + 5)/(x - 2)",
+                correctAnswer: "3",
+                wrongAnswers: ["∞", "5", "นกเพนกวินเต้นระบำ 🐧"],
+                hint: "หารทั้งเศษและส่วนด้วย x แล้วดูค่าสัมประสิทธิ์หน้า x",
+                correctReaction: { emoji: "🐧", text: "เต้นสวย!", message: "เพนกวินปรบมือ!" },
+                wrongReaction: { emoji: "🧊", text: "ลื่น!", message: "เพนกวินล้มแล้ว!" }
+            },
+            {
+                level: "hard",
+                question: "ดูกราฟ: เส้นตรง y = 2x + 1 แต่มีรูที่ x = 1<br><div style='margin: 10px 0; font-size: 24px;'>📈 ——○—— (รูที่ x=1, y=3)</div>จงหา lim<sub>x→1</sub> (2x + 1)",
+                correctAnswer: "3",
+                wrongAnswers: ["1", "ไปกินหมูกะทะ 🥩", "2"],
+                hint: "ลิมิตดูที่กราฟเข้าใกล้ ไม่สนใจรู แทนค่า x = 1",
+                correctReaction: { emoji: "🥩", text: "หอมมาก!", message: "กราฟหอมกรุ่น!" },
+                wrongReaction: { emoji: "🔥", text: "ไหม้!", message: "กราฟไหม้เกรียม!" }
+            },
+            {
+                level: "hard",
+                question: "ดูกราฟ: พาราโบลา y = x² แต่มีรูที่ x = 2<br><div style='margin: 10px 0; font-size: 24px;'>📊 ∪○∪ (รูที่ x=2, y=4)</div>จงหา lim<sub>x→2</sub> x²",
+                correctAnswer: "4",
+                wrongAnswers: ["ไปนอนหลับ 😴", "2", "0"],
+                hint: "แม้จะมีรู แต่พาราโบลาเข้าใกล้ค่าเดียวกันจากทั้งสองข้าง",
+                correctReaction: { emoji: "😴", text: "หลับสบาย!", message: "พาราโบลานอนหลับสบาย!" },
+                wrongReaction: { emoji: "😵", text: "ตื่นแล้ว!", message: "พาราโบลาตกใจตื่น!" }
+            },
+            {
+                level: "hard",
+                question: "จงหา lim<sub>x→4</sub> (x - 4)/(√x - 2)",
+                correctAnswer: "4",
+                wrongAnswers: ["ไปเล่นฟุตบอล ⚽", "2", "0"],
+                hint: "คูณด้วย (√x + 2)/(√x + 2) เพื่อกำจัดรากในส่วน",
+                correctReaction: { emoji: "⚽", text: "โกล!", message: "รากที่สองยิงโกล!" },
+                wrongReaction: { emoji: "🥅", text: "พลาด!", message: "บอลไปนอกกรอบ!" }
+            },
+            {
+                level: "hard",
+                question: "จงหา lim<sub>x→0</sub> (√(x + 4) - 2)/x",
+                correctAnswer: "1/4",
+                wrongAnswers: ["ไปร้องเพลง 🎤", "2", "4"],
+                hint: "คูณด้วย (√(x + 4) + 2)/(√(x + 4) + 2)",
+                correctReaction: { emoji: "🎤", text: "เสียงใส!", message: "รากที่สองร้องเพลงไพเราะ!" },
+                wrongReaction: { emoji: "🎵", text: "เสียงแหบ!", message: "รากที่สองร้องผิดเสียง!" }
+            }
+        ];
+
+        function startGame() {
+            currentQuestionIndex = 0;
+            score = 0;
+            correctAnswers = 0;
+            timeLeft = 900;
+            hintUsed = false;
+            
+            // Shuffle questions
+            shuffledQuestions = [...questions].sort(() => Math.random() - 0.5);
+            
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('question-screen').classList.remove('hidden');
+            
+            startTimer();
+            showQuestion();
+        }
+
+        function startTimer() {
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                updateTimer();
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function updateTimer() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const timerElement = document.getElementById('timer');
+            timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (timeLeft <= 60) {
+                timerElement.classList.add('timer-warning');
+            }
+        }
+
+        function showQuestion() {
+            if (currentQuestionIndex >= shuffledQuestions.length) {
+                endGame();
+                return;
+            }
+
+            const question = shuffledQuestions[currentQuestionIndex];
+            hintUsed = false;
+            
+            // Update progress
+            document.getElementById('current-question').textContent = currentQuestionIndex + 1;
+            document.getElementById('progress-bar').style.width = ((currentQuestionIndex + 1) / shuffledQuestions.length * 100) + '%';
+            
+            // Update difficulty badge
+            const badge = document.getElementById('difficulty-badge');
+            if (question.level === 'easy') {
+                badge.className = 'px-4 py-2 rounded-full font-bold text-white bg-green-500';
+                badge.innerHTML = '🟢 ระดับง่าย';
+            } else if (question.level === 'medium') {
+                badge.className = 'px-4 py-2 rounded-full font-bold text-white bg-yellow-500';
+                badge.innerHTML = '🟡 ระดับปานกลาง';
+            } else {
+                badge.className = 'px-4 py-2 rounded-full font-bold text-white bg-red-500';
+                badge.innerHTML = '🔴 ระดับยาก';
+            }
+            
+            // Show question
+            document.getElementById('question-content').innerHTML = `
+                <div class="text-2xl font-bold text-purple-600 mb-4">${question.question}</div>
+                <div class="text-lg text-gray-600">เลือกคำตอบที่ถูกต้อง</div>
+            `;
+            
+            // Shuffle answers
+            const allAnswers = [question.correctAnswer, ...question.wrongAnswers];
+            const shuffledAnswers = allAnswers.sort(() => Math.random() - 0.5);
+            const correctIndex = shuffledAnswers.indexOf(question.correctAnswer);
+            
+            // Show answers
+            const answersContainer = document.getElementById('answers-container');
+            answersContainer.innerHTML = '';
+            
+            const answerLabels = ['ก)', 'ข)', 'ค)', 'ง)'];
+            
+            shuffledAnswers.forEach((answer, index) => {
+                const button = document.createElement('button');
+                button.className = 'bg-blue-100 hover:bg-blue-200 border-3 border-blue-300 rounded-xl p-4 text-center transition-all duration-300 transform hover:scale-105';
+                button.innerHTML = `
+                    <div class="font-bold text-blue-800 text-lg">${answerLabels[index]} ${answer}</div>
+                `;
+                button.onclick = () => checkAnswer(index, correctIndex);
+                answersContainer.appendChild(button);
+            });
+            
+            hideHint();
+        }
+
+        function checkAnswer(selectedIndex, correctIndex) {
+            const question = shuffledQuestions[currentQuestionIndex];
+            const buttons = document.querySelectorAll('#answers-container button');
+            
+            // Disable all buttons
+            buttons.forEach(btn => btn.disabled = true);
+            
+            if (selectedIndex === correctIndex) {
+                // Correct answer
+                buttons[selectedIndex].className = 'bg-green-200 border-3 border-green-400 rounded-xl p-4 text-center';
+                score += 10;
+                correctAnswers++;
+                
+                // Show correct reaction
+                showReaction(question.correctReaction);
+                
+                // Star animation
+                document.getElementById('star-icon').classList.add('star-animation');
+                setTimeout(() => {
+                    document.getElementById('star-icon').classList.remove('star-animation');
+                }, 1000);
+                
+                createConfetti();
+                
+            } else {
+                // Wrong answer
+                buttons[selectedIndex].className = 'bg-red-200 border-3 border-red-400 rounded-xl p-4 text-center shake';
+                
+                // Show correct answer
+                buttons[correctIndex].className = 'bg-green-200 border-3 border-green-400 rounded-xl p-4 text-center';
+                
+                // Show wrong reaction
+                showReaction(question.wrongReaction);
+            }
+            
+            updateScore();
+            
+            setTimeout(() => {
+                hideReaction();
+                currentQuestionIndex++;
+                showQuestion();
+            }, 3000);
+        }
+
+        function showReaction(reaction) {
+            document.getElementById('reaction-emoji').textContent = reaction.emoji;
+            document.getElementById('reaction-text').textContent = reaction.text;
+            document.getElementById('reaction-message').textContent = reaction.message;
+            document.getElementById('reaction-popup').classList.add('show');
+        }
+
+        function hideReaction() {
+            document.getElementById('reaction-popup').classList.remove('show');
+        }
+
+        function showHint() {
+            if (!hintUsed) {
+                const question = shuffledQuestions[currentQuestionIndex];
+                document.getElementById('hint-text').textContent = question.hint;
+                document.getElementById('hint-popup').classList.add('show');
+                score = Math.max(0, score - 2);
+                hintUsed = true;
+                updateScore();
+            }
+        }
+
+        function hideHint() {
+            document.getElementById('hint-popup').classList.remove('show');
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+        }
+
+        function createConfetti() {
+            const container = document.getElementById('confetti-container');
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'];
+            
+            for (let i = 0; i < 30; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 2 + 's';
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                container.appendChild(confetti);
+                
+                setTimeout(() => {
+                    confetti.remove();
+                }, 4000);
+            }
+        }
+
+        function endGame() {
+            clearInterval(gameTimer);
+            
+            document.getElementById('question-screen').classList.add('hidden');
+            document.getElementById('gameover-screen').classList.remove('hidden');
+            
+            const percentage = Math.round((correctAnswers / shuffledQuestions.length) * 100);
+            
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('correct-answers').textContent = correctAnswers;
+            document.getElementById('percentage').textContent = percentage + '%';
+            
+            // Performance message
+            let message, icon, title, subtitle;
+            
+            if (percentage >= 90) {
+                icon = '🏆';
+                title = 'เจ๋งสุด ๆ!';
+                subtitle = 'คุณเป็นเซียนลิมิต!';
+                message = '<h3 class="text-2xl font-bold text-yellow-800 mb-3">ยอดเยี่ยมมาก! 🌟</h3><p class="text-lg text-yellow-700">คุณเข้าใจเรื่องลิมิตได้อย่างสมบูรณ์แบบ! กราฟทุกตัวยิ้มให้คุณ!</p>';
+            } else if (percentage >= 70) {
+                icon = '🎉';
+                title = 'เก่งมาก!';
+                subtitle = 'คุณทำได้ดีจริง ๆ!';
+                message = '<h3 class="text-2xl font-bold text-yellow-800 mb-3">เยี่ยมมาก! 👏</h3><p class="text-lg text-yellow-700">คุณเข้าใจพื้นฐานลิมิตได้ดี ฟังก์ชันปรบมือให้!</p>';
+            } else if (percentage >= 50) {
+                icon = '😊';
+                title = 'ไม่เลวเลย!';
+                subtitle = 'ยังต้องฝึกอีกนิด!';
+                message = '<h3 class="text-2xl font-bold text-yellow-800 mb-3">พอใช้ได้! 📚</h3><p class="text-lg text-yellow-700">ลิมิตยังคิดถึงคุณอยู่ ลองเล่นใหม่นะ!</p>';
+            } else {
+                icon = '💪';
+                title = 'ไม่เป็นไร!';
+                subtitle = 'ลองใหม่อีกครั้ง!';
+                message = '<h3 class="text-2xl font-bold text-yellow-800 mb-3">ไม่ต้องท้อ! 🌈</h3><p class="text-lg text-yellow-700">ลิมิตรอคุณอยู่ ลองเล่นอีกครั้งแล้วคุณจะเก่งขึ้น!</p>';
+            }
+            
+            document.getElementById('result-icon').textContent = icon;
+            document.getElementById('result-title').textContent = title;
+            document.getElementById('result-subtitle').textContent = subtitle;
+            document.getElementById('performance-message').innerHTML = message;
+            
+            createConfetti();
+        }
+
+        function restartGame() {
+            document.getElementById('gameover-screen').classList.add('hidden');
+            document.getElementById('welcome-screen').classList.remove('hidden');
+            
+            // Reset timer display
+            document.getElementById('timer').classList.remove('timer-warning');
+        }
+
+        // Initialize the game
+        document.addEventListener('DOMContentLoaded', function() {
+            updateScore();
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9753b77104ff408b',t:'MTc1NjIxNTM3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
