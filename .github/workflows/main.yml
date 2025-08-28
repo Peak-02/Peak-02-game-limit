@@ -9,7 +9,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap');
         
         body {
-            font-family: 'Kanit', sans-serif;
+            
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
         }
